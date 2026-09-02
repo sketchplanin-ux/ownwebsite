@@ -1,0 +1,17 @@
+import type { ReactNode } from "react";
+
+import { AdminRouteGuard } from "@/components/admin/admin-route-guard";
+import { AdminShell } from "@/components/admin/admin-shell";
+
+export default function ProtectedAdminLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  return (
+    <AdminRouteGuard>
+      <AdminShell>{children}</AdminShell>
+    </AdminRouteGuard>
+  );
+}
+

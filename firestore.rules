@@ -1,0 +1,558 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function adminDocumentExists() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function adminData() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data;
+    }
+
+    function isActiveAdmin() {
+      return adminDocumentExists()
+        && adminData().active == true
+        && adminData().role in ['SUPER_ADMIN', 'ADMIN', 'EDITOR'];
+    }
+
+    function hasRole(roles) {
+      return isActiveAdmin() && adminData().role in roles;
+    }
+
+    function canManageSettings() {
+      return hasRole(['SUPER_ADMIN', 'ADMIN']);
+    }
+
+    function canManageLeads() {
+      return hasRole(['SUPER_ADMIN', 'ADMIN']);
+    }
+
+    function isNonEmptyString(value, maximum) {
+      return value is string && value.size() > 0 && value.size() <= maximum;
+    }
+
+    function isOptionalString(data, field, maximum) {
+      return !data.keys().hasAny([field])
+        || (data[field] is string && data[field].size() <= maximum);
+    }
+
+    function isOptionalTimestamp(data, field) {
+      return !data.keys().hasAny([field]) || data[field] is timestamp;
+    }
+
+    function validCreateAudit(data) {
+      return data.createdAt == request.time && data.updatedAt == request.time;
+    }
+
+    function validUpdateAudit(data) {
+      return data.createdAt == resource.data.createdAt
+        && data.updatedAt == request.time;
+    }
+
+    function validAdminDocument(data, uid) {
+      return data.keys().hasAll([
+          'uid', 'name', 'email', 'role', 'active', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'name', 'email', 'role', 'active', 'createdAt', 'updatedAt'
+        ])
+        && data.uid == uid
+        && isNonEmptyString(data.name, 120)
+        && isNonEmptyString(data.email, 320)
+        && data.role in ['SUPER_ADMIN', 'ADMIN', 'EDITOR']
+        && data.active is bool
+        && data.createdAt is timestamp
+        && isOptionalTimestamp(data, 'updatedAt');
+    }
+
+    function validService(data) {
+      return data.keys().hasAll([
+          'title', 'slug', 'shortDescription', 'description', 'imageUrl',
+          'imageAlt', 'featured', 'published', 'displayOrder', 'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'title', 'slug', 'shortDescription', 'description', 'imageUrl',
+          'imagePublicId', 'imageAlt', 'icon', 'features', 'featured',
+          'published', 'displayOrder', 'metaTitle', 'metaDescription',
+          'createdAt', 'updatedAt'
+        ])
+        && isNonEmptyString(data.title, 160)
+        && isNonEmptyString(data.slug, 180)
+        && isNonEmptyString(data.shortDescription, 500)
+        && isNonEmptyString(data.description, 20000)
+        && data.imageUrl is string && data.imageUrl.size() <= 2048
+        && data.imageAlt is string && data.imageAlt.size() <= 240
+        && isOptionalString(data, 'imagePublicId', 500)
+        && isOptionalString(data, 'icon', 120)
+        && (!data.keys().hasAny(['features'])
+          || (data.features is list && data.features.size() <= 30))
+        && data.featured is bool
+        && data.published is bool
+        && data.displayOrder is int
+        && data.displayOrder >= 0 && data.displayOrder <= 100000
+        && isOptionalString(data, 'metaTitle', 180)
+        && isOptionalString(data, 'metaDescription', 500);
+    }
+
+    function validProjectCategory(data) {
+      return data.keys().hasAll([
+          'name', 'slug', 'published', 'displayOrder', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'name', 'slug', 'description', 'published', 'displayOrder',
+          'createdAt', 'updatedAt'
+        ])
+        && isNonEmptyString(data.name, 120)
+        && isNonEmptyString(data.slug, 160)
+        && isOptionalString(data, 'description', 1000)
+        && data.published is bool
+        && data.displayOrder is int
+        && data.displayOrder >= 0 && data.displayOrder <= 100000;
+    }
+
+    function validProject(data) {
+      return data.keys().hasAll([
+          'title', 'slug', 'description', 'category', 'coverImageUrl',
+          'coverImageAlt', 'galleryImages', 'featured', 'published',
+          'displayOrder', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'title', 'slug', 'shortDescription', 'description', 'category',
+          'categoryId', 'location', 'clientName', 'projectType',
+          'completionDate', 'coverImageUrl', 'coverImagePublicId',
+          'coverImageAlt', 'galleryImages', 'featured', 'published',
+          'displayOrder', 'metaTitle', 'metaDescription', 'createdAt',
+          'updatedAt'
+        ])
+        && isNonEmptyString(data.title, 180)
+        && isNonEmptyString(data.slug, 200)
+        && isOptionalString(data, 'shortDescription', 500)
+        && isNonEmptyString(data.description, 30000)
+        && isNonEmptyString(data.category, 160)
+        && isOptionalString(data, 'categoryId', 180)
+        && isOptionalString(data, 'location', 300)
+        && isOptionalString(data, 'clientName', 200)
+        && isOptionalString(data, 'projectType', 160)
+        && isOptionalString(data, 'completionDate', 10)
+        && data.coverImageUrl is string && data.coverImageUrl.size() <= 2048
+        && data.coverImageAlt is string && data.coverImageAlt.size() <= 240
+        && isOptionalString(data, 'coverImagePublicId', 500)
+        && data.galleryImages is list && data.galleryImages.size() <= 40
+        && data.featured is bool
+        && data.published is bool
+        && data.displayOrder is int
+        && data.displayOrder >= 0 && data.displayOrder <= 100000
+        && isOptionalString(data, 'metaTitle', 180)
+        && isOptionalString(data, 'metaDescription', 500);
+    }
+
+    function validBlog(data) {
+      return data.keys().hasAll([
+          'title', 'slug', 'excerpt', 'content', 'featuredImageUrl',
+          'featuredImageAlt', 'author', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'title', 'slug', 'excerpt', 'content', 'featuredImageUrl',
+          'featuredImagePublicId', 'featuredImageAlt', 'author', 'category',
+          'status', 'metaTitle', 'metaDescription', 'publishedAt',
+          'createdAt', 'updatedAt'
+        ])
+        && isNonEmptyString(data.title, 180)
+        && isNonEmptyString(data.slug, 200)
+        && isNonEmptyString(data.excerpt, 800)
+        && data.content is map
+        && data.featuredImageUrl is string
+        && data.featuredImageUrl.size() <= 2048
+        && data.featuredImageAlt is string
+        && data.featuredImageAlt.size() <= 240
+        && isOptionalString(data, 'featuredImagePublicId', 500)
+        && isNonEmptyString(data.author, 160)
+        && isOptionalString(data, 'category', 160)
+        && data.status in ['DRAFT', 'PUBLISHED', 'ARCHIVED']
+        && isOptionalString(data, 'metaTitle', 180)
+        && isOptionalString(data, 'metaDescription', 500)
+        && isOptionalTimestamp(data, 'publishedAt')
+        && (data.status != 'PUBLISHED'
+          || (data.keys().hasAny(['publishedAt']) && data.publishedAt is timestamp));
+    }
+
+    function validBanner(data) {
+      return data.keys().hasAll([
+          'title', 'desktopImageUrl', 'desktopImageAlt', 'active',
+          'displayOrder', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'title', 'subtitle', 'desktopImageUrl', 'desktopImagePublicId',
+          'desktopImageAlt', 'mobileImageUrl', 'mobileImagePublicId',
+          'mobileImageAlt', 'buttonText', 'buttonUrl', 'startAt', 'endAt',
+          'active', 'displayOrder', 'createdAt', 'updatedAt'
+        ])
+        && isNonEmptyString(data.title, 180)
+        && isNonEmptyString(data.desktopImageUrl, 2048)
+        && data.desktopImageAlt is string && data.desktopImageAlt.size() <= 240
+        && isOptionalString(data, 'subtitle', 500)
+        && isOptionalString(data, 'desktopImagePublicId', 500)
+        && isOptionalString(data, 'mobileImageUrl', 2048)
+        && isOptionalString(data, 'mobileImagePublicId', 500)
+        && isOptionalString(data, 'mobileImageAlt', 240)
+        && isOptionalString(data, 'buttonText', 100)
+        && isOptionalString(data, 'buttonUrl', 2048)
+        && isOptionalTimestamp(data, 'startAt')
+        && isOptionalTimestamp(data, 'endAt')
+        && (!data.keys().hasAny(['startAt', 'endAt'])
+          || !data.keys().hasAll(['startAt', 'endAt'])
+          || data.startAt <= data.endAt)
+        && data.active is bool
+        && data.displayOrder is int
+        && data.displayOrder >= 0 && data.displayOrder <= 100000;
+    }
+
+    function validOffer(data) {
+      return data.keys().hasAll([
+          'title', 'description', 'active', 'showOnHomepage', 'showAsPopup',
+          'displayOrder', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'title', 'description', 'imageUrl', 'imagePublicId', 'imageAlt',
+          'startAt', 'endAt', 'buttonText', 'buttonUrl', 'active',
+          'showOnHomepage', 'showAsPopup', 'displayOrder', 'createdAt',
+          'updatedAt'
+        ])
+        && isNonEmptyString(data.title, 180)
+        && isNonEmptyString(data.description, 5000)
+        && isOptionalString(data, 'imageUrl', 2048)
+        && isOptionalString(data, 'imagePublicId', 500)
+        && isOptionalString(data, 'imageAlt', 240)
+        && isOptionalString(data, 'buttonText', 100)
+        && isOptionalString(data, 'buttonUrl', 2048)
+        && isOptionalTimestamp(data, 'startAt')
+        && isOptionalTimestamp(data, 'endAt')
+        && (!data.keys().hasAll(['startAt', 'endAt'])
+          || data.startAt <= data.endAt)
+        && data.active is bool
+        && data.showAsPopup is bool
+        && (!data.keys().hasAny(['showOnHomepage'])
+          || data.showOnHomepage is bool)
+        && (!data.keys().hasAny(['displayOrder'])
+          || (data.displayOrder is int
+            && data.displayOrder >= 0 && data.displayOrder <= 100000));
+    }
+
+    function validPageBase(data) {
+      return data.keys().hasAll([
+          'title', 'published', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'title', 'published', 'metaTitle', 'metaDescription',
+          'introductionHeading', 'introductionBody', 'introductionImage',
+          'whyChooseHeading', 'whyChooseItems', 'processHeading',
+          'processSteps', 'contactCallToAction', 'introduction', 'heroImage',
+          'mission', 'vision', 'experience', 'teamHeading', 'teamMembers',
+          'awardsHeading', 'awards', 'heading', 'formHeading', 'mapHeading',
+          'createdAt', 'updatedAt'
+        ])
+        && isNonEmptyString(data.title, 180)
+        && data.published is bool
+        && isOptionalString(data, 'metaTitle', 180)
+        && isOptionalString(data, 'metaDescription', 500);
+    }
+
+    function validCallToAction(data) {
+      return data is map
+        && data.keys().hasAll([
+          'heading', 'description', 'buttonText', 'buttonUrl'
+        ])
+        && data.keys().hasOnly([
+          'heading', 'description', 'buttonText', 'buttonUrl'
+        ])
+        && isNonEmptyString(data.heading, 160)
+        && isNonEmptyString(data.description, 1000)
+        && isNonEmptyString(data.buttonText, 100)
+        && isNonEmptyString(data.buttonUrl, 2048);
+    }
+
+    function validHomePage(data) {
+      return validPageBase(data)
+        && data.keys().hasAll([
+          'introductionHeading', 'introductionBody', 'whyChooseHeading',
+          'whyChooseItems', 'processHeading', 'processSteps',
+          'contactCallToAction'
+        ])
+        && isNonEmptyString(data.introductionHeading, 200)
+        && isNonEmptyString(data.introductionBody, 5000)
+        && isNonEmptyString(data.whyChooseHeading, 200)
+        && data.whyChooseItems is list && data.whyChooseItems.size() <= 30
+        && isNonEmptyString(data.processHeading, 200)
+        && data.processSteps is list && data.processSteps.size() <= 30
+        && validCallToAction(data.contactCallToAction)
+        && (!data.keys().hasAny(['introductionImage'])
+          || data.introductionImage is map);
+    }
+
+    function validAboutPage(data) {
+      return validPageBase(data)
+        && data.keys().hasAll([
+          'introduction', 'mission', 'vision', 'experience', 'teamHeading',
+          'teamMembers', 'processHeading', 'processSteps',
+          'whyChooseHeading', 'whyChooseItems', 'awardsHeading', 'awards',
+          'contactCallToAction'
+        ])
+        && isNonEmptyString(data.introduction, 6000)
+        && isNonEmptyString(data.mission, 4000)
+        && isNonEmptyString(data.vision, 4000)
+        && isNonEmptyString(data.experience, 4000)
+        && isNonEmptyString(data.teamHeading, 200)
+        && data.teamMembers is list && data.teamMembers.size() <= 60
+        && isNonEmptyString(data.processHeading, 200)
+        && data.processSteps is list && data.processSteps.size() <= 30
+        && isNonEmptyString(data.whyChooseHeading, 200)
+        && data.whyChooseItems is list && data.whyChooseItems.size() <= 30
+        && isNonEmptyString(data.awardsHeading, 200)
+        && data.awards is list && data.awards.size() <= 60
+        && validCallToAction(data.contactCallToAction)
+        && (!data.keys().hasAny(['heroImage']) || data.heroImage is map);
+    }
+
+    function validContactPage(data) {
+      return validPageBase(data)
+        && data.keys().hasAll([
+          'heading', 'introduction', 'formHeading', 'mapHeading'
+        ])
+        && isNonEmptyString(data.heading, 200)
+        && isNonEmptyString(data.introduction, 4000)
+        && isNonEmptyString(data.formHeading, 200)
+        && isNonEmptyString(data.mapHeading, 200);
+    }
+
+    function validPageForId(data, pageId) {
+      return (pageId == 'home' && validHomePage(data))
+        || (pageId == 'about' && validAboutPage(data))
+        || (pageId == 'contact' && validContactPage(data));
+    }
+
+    function validGeneralSettings(data) {
+      return data.keys().hasAll([
+          'companyName', 'logoUrl', 'logoAlt', 'faviconUrl', 'phone',
+          'whatsappNumber', 'email', 'address', 'googleMapsUrl',
+          'officeHours', 'footerText', 'brandAccentColor', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'companyName', 'logoUrl', 'logoPublicId', 'logoAlt', 'faviconUrl',
+          'faviconPublicId', 'phone', 'whatsappNumber', 'email', 'address',
+          'googleMapsUrl', 'officeHours', 'footerText', 'brandAccentColor',
+          'updatedAt'
+        ])
+        && isNonEmptyString(data.companyName, 160)
+        && data.logoUrl is string && data.logoUrl.size() <= 2048
+        && data.logoAlt is string && data.logoAlt.size() <= 240
+        && data.faviconUrl is string && data.faviconUrl.size() <= 2048
+        && isOptionalString(data, 'logoPublicId', 500)
+        && isOptionalString(data, 'faviconPublicId', 500)
+        && data.phone is string && data.phone.size() <= 40
+        && data.whatsappNumber is string && data.whatsappNumber.size() <= 40
+        && data.email is string && data.email.size() <= 320
+        && data.address is string && data.address.size() <= 1000
+        && data.googleMapsUrl is string && data.googleMapsUrl.size() <= 4096
+        && data.officeHours is string && data.officeHours.size() <= 500
+        && data.footerText is string && data.footerText.size() <= 500
+        && data.brandAccentColor is string
+        && data.brandAccentColor.size() <= 32
+        && data.updatedAt == request.time;
+    }
+
+    function validSocialSettings(data) {
+      return data.keys().hasAll([
+          'facebookUrl', 'instagramUrl', 'linkedInUrl', 'youtubeUrl',
+          'whatsappUrl', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'facebookUrl', 'instagramUrl', 'linkedInUrl', 'youtubeUrl',
+          'whatsappUrl', 'updatedAt'
+        ])
+        && data.facebookUrl is string && data.facebookUrl.size() <= 2048
+        && data.instagramUrl is string && data.instagramUrl.size() <= 2048
+        && data.linkedInUrl is string && data.linkedInUrl.size() <= 2048
+        && data.youtubeUrl is string && data.youtubeUrl.size() <= 2048
+        && data.whatsappUrl is string && data.whatsappUrl.size() <= 2048
+        && data.updatedAt == request.time;
+    }
+
+    function validSeoSettings(data) {
+      return data.keys().hasAll([
+          'defaultMetaTitle', 'defaultMetaDescription',
+          'defaultOpenGraphImageUrl', 'defaultOpenGraphImageAlt', 'siteUrl',
+          'companySchema', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'defaultMetaTitle', 'defaultMetaDescription',
+          'defaultOpenGraphImageUrl', 'defaultOpenGraphImagePublicId',
+          'defaultOpenGraphImageAlt', 'siteUrl', 'companySchema', 'updatedAt'
+        ])
+        && isNonEmptyString(data.defaultMetaTitle, 180)
+        && isNonEmptyString(data.defaultMetaDescription, 500)
+        && data.defaultOpenGraphImageUrl is string
+        && data.defaultOpenGraphImageUrl.size() <= 2048
+        && data.defaultOpenGraphImageAlt is string
+        && data.defaultOpenGraphImageAlt.size() <= 240
+        && isOptionalString(data, 'defaultOpenGraphImagePublicId', 500)
+        && data.siteUrl is string && data.siteUrl.size() <= 2048
+        && data.companySchema is map
+        && data.companySchema.keys().hasAll(['name'])
+        && data.companySchema.keys().hasOnly([
+          'name', 'legalName', 'description', 'email', 'phone', 'address',
+          'priceRange', 'areaServed'
+        ])
+        && isNonEmptyString(data.companySchema.name, 160)
+        && (!data.companySchema.keys().hasAny(['areaServed'])
+          || (data.companySchema.areaServed is list
+            && data.companySchema.areaServed.size() <= 50))
+        && data.updatedAt == request.time;
+    }
+
+    function validLeadCreate(data) {
+      return data.keys().hasAll([
+          'name', 'phone', 'message', 'source', 'status', 'adminNotes',
+          'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'name', 'phone', 'email', 'service', 'message', 'source', 'status',
+          'adminNotes', 'createdAt'
+        ])
+        && isNonEmptyString(data.name, 120)
+        && isNonEmptyString(data.phone, 40)
+        && isOptionalString(data, 'email', 320)
+        && isOptionalString(data, 'service', 180)
+        && isNonEmptyString(data.message, 5000)
+        && data.source == 'website'
+        && data.status == 'NEW'
+        && data.adminNotes == ''
+        && data.createdAt == request.time;
+    }
+
+    match /admins/{uid} {
+      // Self-get is required before an active-role check can be completed.
+      allow get: if signedIn() && (request.auth.uid == uid || hasRole(['SUPER_ADMIN']));
+      allow list: if hasRole(['SUPER_ADMIN']);
+      allow create: if hasRole(['SUPER_ADMIN'])
+        && validAdminDocument(request.resource.data, uid)
+        && request.resource.data.createdAt == request.time;
+      allow update: if hasRole(['SUPER_ADMIN'])
+        && validAdminDocument(request.resource.data, uid)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && (uid != request.auth.uid
+          || (request.resource.data.active == true
+            && request.resource.data.role == 'SUPER_ADMIN'));
+      allow delete: if hasRole(['SUPER_ADMIN']) && request.auth.uid != uid;
+    }
+
+    match /pages/{pageId} {
+      allow read: if (pageId in ['home', 'about', 'contact']
+          && resource.data.published == true)
+        || isActiveAdmin();
+      allow create: if canManageSettings()
+        && pageId in ['home', 'about', 'contact']
+        && validPageForId(request.resource.data, pageId)
+        && validCreateAudit(request.resource.data);
+      allow update: if canManageSettings()
+        && pageId in ['home', 'about', 'contact']
+        && validPageForId(request.resource.data, pageId)
+        && validUpdateAudit(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /services/{serviceId} {
+      allow read: if resource.data.published == true || isActiveAdmin();
+      allow create: if isActiveAdmin() && validService(request.resource.data)
+        && validCreateAudit(request.resource.data);
+      allow update: if isActiveAdmin() && validService(request.resource.data)
+        && validUpdateAudit(request.resource.data);
+      allow delete: if isActiveAdmin();
+    }
+
+    match /projects/{projectId} {
+      allow read: if resource.data.published == true || isActiveAdmin();
+      allow create: if isActiveAdmin() && validProject(request.resource.data)
+        && validCreateAudit(request.resource.data);
+      allow update: if isActiveAdmin() && validProject(request.resource.data)
+        && validUpdateAudit(request.resource.data);
+      allow delete: if isActiveAdmin();
+    }
+
+    match /projectCategories/{categoryId} {
+      allow read: if resource.data.published == true || isActiveAdmin();
+      allow create: if isActiveAdmin()
+        && validProjectCategory(request.resource.data)
+        && validCreateAudit(request.resource.data);
+      allow update: if isActiveAdmin()
+        && validProjectCategory(request.resource.data)
+        && validUpdateAudit(request.resource.data);
+      allow delete: if isActiveAdmin();
+    }
+
+    match /blogs/{blogId} {
+      allow read: if resource.data.status == 'PUBLISHED' || isActiveAdmin();
+      allow create: if isActiveAdmin() && validBlog(request.resource.data)
+        && validCreateAudit(request.resource.data);
+      allow update: if isActiveAdmin() && validBlog(request.resource.data)
+        && validUpdateAudit(request.resource.data);
+      allow delete: if isActiveAdmin();
+    }
+
+    match /banners/{bannerId} {
+      // Scheduling is applied after an active-only query. Firestore rules cannot
+      // safely make an unrestricted active query depend on optional range fields.
+      allow read: if resource.data.active == true || isActiveAdmin();
+      allow create: if isActiveAdmin() && validBanner(request.resource.data)
+        && validCreateAudit(request.resource.data);
+      allow update: if isActiveAdmin() && validBanner(request.resource.data)
+        && validUpdateAudit(request.resource.data);
+      allow delete: if isActiveAdmin();
+    }
+
+    match /offers/{offerId} {
+      allow read: if resource.data.active == true || isActiveAdmin();
+      allow create: if isActiveAdmin() && validOffer(request.resource.data)
+        && validCreateAudit(request.resource.data);
+      allow update: if isActiveAdmin() && validOffer(request.resource.data)
+        && validUpdateAudit(request.resource.data);
+      allow delete: if isActiveAdmin();
+    }
+
+    match /leads/{leadId} {
+      allow create: if validLeadCreate(request.resource.data);
+      allow read: if isActiveAdmin();
+      allow update: if canManageLeads()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'adminNotes', 'updatedAt'])
+        && request.resource.data.status in [
+          'NEW', 'CONTACTED', 'FOLLOW_UP', 'CONVERTED', 'CLOSED', 'SPAM'
+        ]
+        && request.resource.data.adminNotes is string
+        && request.resource.data.adminNotes.size() <= 10000
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if canManageLeads();
+    }
+
+    match /siteSettings/{settingsId} {
+      allow get: if settingsId in ['general', 'social', 'seo'] || isActiveAdmin();
+      allow list: if isActiveAdmin();
+      allow create, update: if canManageSettings()
+        && ((settingsId == 'general' && validGeneralSettings(request.resource.data))
+          || (settingsId == 'social' && validSocialSettings(request.resource.data))
+          || (settingsId == 'seo' && validSeoSettings(request.resource.data)));
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
