@@ -1,6 +1,6 @@
 # SKETCHPLAN website and content admin
 
-Production-oriented public website and client-side admin panel for **SKETCHPLAN — Architecture, Interior & Planning**. The project uses Next.js static export, Firebase Authentication, Cloud Firestore, Cloudinary image delivery, TanStack Query, React Hook Form, Zod, TipTap, Tailwind CSS, and shadcn/ui.
+Production-oriented public website and client-side admin panel for **SKETCHPLAN — Architecture, Interior & Planning**. The project uses Next.js static export, Firebase Authentication, Cloud Firestore, Cloudflare R2 image delivery, TanStack Query, React Hook Form, Zod, TipTap, Tailwind CSS, and shadcn/ui.
 
 The public site uses a fixed architectural navigation rail on desktop, a left drawer on mobile, a clean live-IST utility bar, and Firestore-managed content. The protected admin area is available under `/admin/` and includes the SKETCHPLAN identity plus a `Product by Creative Link` credit.
 
@@ -13,10 +13,10 @@ Browser / static Firebase Hosting files
   ├─ Admin login → Firebase email/password authentication
   ├─ Admin access → admins/{uid} active-role check
   ├─ Admin CRUD → role-enforced Firestore reads/writes
-  └─ Admin media → restricted unsigned Cloudinary uploads
+  └─ Admin media → Cloudflare Worker (verifies Firebase ID token) → R2 bucket
 ```
 
-There is intentionally no Express server, API route, Server Action, Cloud Function, Firebase Storage bucket, service account, or Cloudinary API secret in this repository.
+There is intentionally no Express server, API route, Server Action, Cloud Function, Firebase Storage bucket, or service-account key in this repository. The single server-side component is the media upload Worker in `worker/`, which is deployed separately to Cloudflare and holds no stored secret — its R2 binding is its credential.
 
 ## Technology stack
 
@@ -24,7 +24,7 @@ There is intentionally no Express server, API route, Server Action, Cloud Functi
 - React and strict TypeScript
 - Tailwind CSS v4 and shadcn/ui
 - Firebase Authentication and Cloud Firestore
-- Cloudinary unsigned uploads for admin media
+- Cloudflare R2 object storage for admin media, written through a Worker
 - TanStack Query for bounded client-side data caching
 - React Hook Form and Zod for forms
 - TipTap JSON for blog content
@@ -55,6 +55,7 @@ src/
 tests/
   unit/                   Fast unit tests
   rules/                  Firestore emulator security tests
+worker/                   Cloudflare Worker that authorizes admin uploads to R2
 firebase.json             Hosting, Firestore and emulator configuration
 firestore.rules           Production role and validation rules
 firestore.indexes.json    Compound indexes required by application queries
@@ -67,7 +68,7 @@ Requirements:
 - Node.js compatible with the installed Next.js version
 - npm
 - A Firebase web app and Firestore database
-- A Cloudinary cloud with a restricted unsigned upload preset
+- A Cloudflare account with an R2 bucket and the media Worker deployed (see `worker/README.md`)
 - Java JDK 11 or newer only when running Firestore emulator tests
 
 Install and configure:
@@ -93,19 +94,20 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
 NEXT_PUBLIC_FIREBASE_APP_ID=
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
 
-NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=
-NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=
+NEXT_PUBLIC_R2_PUBLIC_BASE_URL=
+NEXT_PUBLIC_MEDIA_UPLOAD_URL=
 
 NEXT_PUBLIC_SITE_URL=
 NEXT_PUBLIC_WHATSAPP_NUMBER=
 ```
 
-Firebase web configuration is public by design. Authorization is enforced by Firebase Authentication and `firestore.rules`. The Cloudinary cloud name and unsigned preset name are also public client values, so the preset itself must be tightly restricted.
+Firebase web configuration is public by design. Authorization is enforced by Firebase Authentication and `firestore.rules`. The R2 public base URL and the Worker upload URL are also public client values; the Worker itself rejects any caller that is not an active admin, so neither value grants write access.
 
 Never add any of the following to this project:
 
 - Firebase service-account JSON or private key
-- Cloudinary API secret
+- Cloudflare R2 access key ID or secret access key (the Worker does not use one)
+- a Cloudflare API token
 - SMTP credentials
 - private server credentials in a `NEXT_PUBLIC_*` variable
 
@@ -246,23 +248,41 @@ firebase deploy --only firestore:rules,firestore:indexes
 
 Rules are not query filters. Public queries in this app therefore include the same `published`, `status`, or `active` predicates required by the rules.
 
-## Cloudinary setup
+## Cloudflare R2 setup
 
-Create a dedicated **unsigned** upload preset in Cloudinary and put its name in `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`.
+Admin media lives in an R2 bucket. R2 cannot accept anonymous browser uploads,
+so writes go through the Worker in `worker/`. Full instructions are in
+[worker/README.md](worker/README.md); the short version:
 
-Recommended preset restrictions:
+```bash
+npx wrangler r2 bucket create sketchplan-media
+cd worker && npm install && npx wrangler deploy
+```
 
-- unsigned upload enabled
-- allowed formats: `jpg`, `jpeg`, `png`, `webp`
-- maximum raw upload size: 10 MB or lower
-- dedicated asset folder: `sketchplan`
-- disallow arbitrary incoming transformations unless required
-- use unique filenames and do not overwrite existing assets
-- restrict delivery/types as tightly as the Cloudinary account permits
+Then set `NEXT_PUBLIC_R2_PUBLIC_BASE_URL` and `NEXT_PUBLIC_MEDIA_UPLOAD_URL`.
 
-The client performs MIME type, extension, size, count, and response validation and displays upload progress. The preset remains publicly discoverable because it is used by a static browser application; client-side admin authentication cannot make an unsigned preset secret.
+Upload safeguards:
 
-Deleting or replacing a Firestore image reference does **not** securely destroy the Cloudinary asset. Signed destruction requires the Cloudinary API secret and therefore must be done manually in Cloudinary or through a separately authorized backend that is outside this project’s scope.
+- allowed types: `image/jpeg`, `image/png`, `image/webp`
+- maximum size: 10 MB, enforced in the browser and again in the Worker
+- dedicated object prefix: `sketchplan/`
+- randomized object keys, so an upload never overwrites an existing object
+- magic-byte check in the Worker, so a renamed file cannot pose as an image
+- per-request authorization: a verified Firebase ID token plus an active
+  `admins/{uid}` document
+
+Unlike an unsigned Cloudinary preset, nothing here is publicly usable. The
+Worker URL is discoverable, but it refuses every caller that is not a signed-in
+active admin.
+
+**Image transformations.** Responsive `srcset` URLs use Cloudflare Image
+Transformations (`/cdn-cgi/image/...`), which must be enabled on the zone that
+serves the bucket, and require a custom domain rather than the `r2.dev` URL.
+Without it the browser falls back to the untransformed original.
+
+**Deletion.** Detaching or replacing a Firestore image reference does **not**
+delete the R2 object. Remove orphans with
+`npx wrangler r2 object delete sketchplan-media/<key>` or from the dashboard.
 
 ## Development and validation commands
 
@@ -336,10 +356,10 @@ See [`docs/ADMIN_GUIDE.md`](docs/ADMIN_GUIDE.md) for the client-facing workflow.
 ## Backup and maintenance
 
 - Export or back up Firestore content on a regular schedule appropriate to the project plan.
-- Keep original brand/media files outside Cloudinary as a source archive.
-- Record orphaned Cloudinary public IDs when replacing media and remove them through a trusted account workflow.
+- Keep original brand/media files outside R2 as a source archive.
+- Record orphaned R2 object keys when replacing media and remove them through a trusted account workflow.
 - Review active admins and authorized domains periodically.
-- Monitor Firebase/Cloudinary usage and configure budget alerts where available.
+- Monitor Firebase, R2, and image transformation usage and configure budget alerts where available.
 - Test rules after every schema or role change and deploy rules before UI changes that depend on them.
 - Run dependency audit, typecheck, lint, unit tests, rule tests, and static build before each release.
 

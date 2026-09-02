@@ -26,7 +26,7 @@ const validBlog: BlogFormValues = {
     ],
   },
   featuredImageUrl:
-    "https://res.cloudinary.com/example/image/upload/courtyard.webp",
+    "https://cdn.test.example/sketchplan/courtyard.webp",
   featuredImagePublicId: "sketchplan/blog/courtyard",
   featuredImageAlt: "A planted courtyard in a contemporary home",
   author: "SKETCHPLAN Studio",

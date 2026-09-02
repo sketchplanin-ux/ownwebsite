@@ -7,6 +7,6 @@ Object.assign(process.env, {
   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "test.appspot.com",
   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "1234567890",
   NEXT_PUBLIC_FIREBASE_APP_ID: "1:1234567890:web:test",
-  NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: "test-cloud",
-  NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: "test-preset",
+  NEXT_PUBLIC_R2_PUBLIC_BASE_URL: "https://cdn.test.example",
+  NEXT_PUBLIC_MEDIA_UPLOAD_URL: "https://media.test.workers.dev/uploads",
 });

@@ -1,10 +1,12 @@
 import * as React from "react"
 
+import { mediaHostname } from "@/lib/env"
 import { isSafeHttpUrl, isSafeRelativeUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
 
 const DEFAULT_RESPONSIVE_WIDTHS = [320, 480, 640, 768, 960, 1280, 1600, 1920]
-const CLOUDINARY_UPLOAD_MARKER = "/image/upload/"
+const TRANSFORMATION_PREFIX = "/cdn-cgi/image/"
+const DEFAULT_QUALITY = 85
 
 type ResponsiveImageProps = Omit<
   React.ComponentProps<"img">,
@@ -27,7 +29,12 @@ function normalizeWidths(widths: readonly number[]): number[] {
   ).sort((first, second) => first - second)
 }
 
-function buildCloudinaryImageUrl(
+/**
+ * Rewrites an R2 object URL into a Cloudflare Image Transformations URL.
+ * Only images served from the configured media hostname are rewritten, because
+ * the transformation pipeline is bound to that zone.
+ */
+function buildTransformedImageUrl(
   source: string,
   width: number,
   quality: "auto" | number = "auto"
@@ -35,7 +42,7 @@ function buildCloudinaryImageUrl(
   const safeWidth = Math.round(width)
   const safeQuality =
     quality === "auto" || !Number.isFinite(quality)
-      ? "auto"
+      ? DEFAULT_QUALITY
       : Math.min(100, Math.max(1, Math.round(quality)))
 
   if (
@@ -52,36 +59,25 @@ function buildCloudinaryImageUrl(
 
     if (
       url.protocol !== "https:" ||
-      url.hostname.toLowerCase() !== "res.cloudinary.com" ||
+      url.hostname.toLowerCase() !== mediaHostname ||
       url.username !== "" ||
       url.password !== ""
     ) {
       return null
     }
 
-    const markerIndex = url.pathname.indexOf(CLOUDINARY_UPLOAD_MARKER)
-    if (markerIndex < 0) {
+    // Already-transformed URLs must not be nested inside another transformation.
+    if (url.pathname.startsWith(TRANSFORMATION_PREFIX)) {
       return null
     }
 
-    const prefix = url.pathname.slice(
-      0,
-      markerIndex + CLOUDINARY_UPLOAD_MARKER.length
-    )
-    const assetPath = url.pathname.slice(
-      markerIndex + CLOUDINARY_UPLOAD_MARKER.length
-    )
-
-    if (!assetPath || assetPath.startsWith("s--")) {
+    const objectPath = url.pathname.replace(/^\/+/, "")
+    if (!objectPath) {
       return null
     }
 
-    const transformation = `f_auto,q_${safeQuality},c_limit,w_${safeWidth}`
-    const segments = assetPath.split("/")
-    const versionIndex = segments.findIndex((segment) => /^v\d+$/.test(segment))
-    const insertionIndex = versionIndex >= 0 ? versionIndex : 0
-    segments.splice(insertionIndex, 0, transformation)
-    url.pathname = `${prefix}${segments.join("/")}`
+    const options = `format=auto,quality=${safeQuality},fit=scale-down,width=${safeWidth}`
+    url.pathname = `${TRANSFORMATION_PREFIX}${options}/${objectPath}`
 
     return url.toString()
   } catch {
@@ -113,13 +109,14 @@ function ResponsiveImage({
   const responsiveWidths = normalizeWidths(widths)
   const candidates = responsiveWidths
     .map((candidateWidth) => {
-      const url = buildCloudinaryImageUrl(source, candidateWidth, quality)
+      const url = buildTransformedImageUrl(source, candidateWidth, quality)
       return url ? `${url} ${candidateWidth}w` : null
     })
     .filter((candidate): candidate is string => candidate !== null)
 
   return (
-    // Cloudinary performs the transformations used by this native responsive image.
+    // Cloudflare Image Transformations perform the resizing for this native
+    // responsive image, so next/image is not involved.
     // eslint-disable-next-line @next/next/no-img-element
     <img
       data-slot="responsive-image"
@@ -137,6 +134,6 @@ function ResponsiveImage({
 
 export {
   ResponsiveImage,
-  buildCloudinaryImageUrl,
+  buildTransformedImageUrl,
   type ResponsiveImageProps,
 }

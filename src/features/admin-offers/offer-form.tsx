@@ -227,21 +227,21 @@ export function OfferForm({ initialOffer }: OfferFormProps) {
               />
               <ScheduledContentFormField
                 htmlFor="offer-image-url"
-                label="Cloudinary HTTPS URL"
+                label="Image HTTPS URL"
                 error={form.formState.errors.imageUrl?.message}
                 className="sm:col-span-2"
               >
                 <Input
                   id="offer-image-url"
                   type="url"
-                  placeholder="https://res.cloudinary.com/…"
+                  placeholder="https://cdn.example.com/sketchplan/…"
                   {...form.register("imageUrl")}
                   aria-invalid={Boolean(form.formState.errors.imageUrl)}
                 />
               </ScheduledContentFormField>
               <ScheduledContentFormField
                 htmlFor="offer-image-public-id"
-                label="Cloudinary public ID"
+                label="Image object key"
                 error={form.formState.errors.imagePublicId?.message}
               >
                 <Input id="offer-image-public-id" {...form.register("imagePublicId")} />

@@ -43,7 +43,7 @@ function PagesWorkspace() {
         <AlertTitle>Structured section editor</AlertTitle>
         <AlertDescription>
           Repeatable sections use validated JSON so their IDs and display order
-          remain intact. Images currently accept existing URLs; Cloudinary upload
+          remain intact. Images currently accept existing URLs; direct upload
           controls can be connected later without changing the document schema.
         </AlertDescription>
       </Alert>

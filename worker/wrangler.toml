@@ -1,0 +1,20 @@
+name = "sketchplan-media"
+main = "src/index.ts"
+compatibility_date = "2026-01-15"
+
+# The R2 binding IS the credential. Because the Worker talks to the bucket
+# through this binding, no R2 access key or secret is ever created or stored.
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "sketchplan-media"
+
+[vars]
+# Firebase project whose ID tokens this Worker will trust.
+FIREBASE_PROJECT_ID = "own-website-f8900"
+
+# Public base URL that serves the bucket (custom domain on your Cloudflare zone,
+# or the bucket's r2.dev URL). No trailing slash.
+R2_PUBLIC_BASE_URL = "https://cdn.example.com"
+
+# Comma-separated origins allowed to call this Worker.
+ALLOWED_ORIGINS = "https://sketchplan-web.web.app,https://www.example.com,http://localhost:3000"
