@@ -347,7 +347,7 @@ export function BannersAdminScreen() {
             <AlertDialogTitle>Delete banner?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget
-                ? `“${deleteTarget.title}” will be permanently deleted. Cloudinary assets are not automatically removed.`
+                ? `“${deleteTarget.title}” will be permanently deleted. R2 objects are not automatically removed.`
                 : "This banner will be permanently deleted."}
             </AlertDialogDescription>
           </AlertDialogHeader>

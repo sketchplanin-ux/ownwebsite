@@ -273,7 +273,7 @@ export function AboutPageForm() {
             disabled={mutation.isPending}
             rows={20}
             json
-            description='Each member requires "id", "name", "role", "imageUrl", "imageAlt", and numeric "displayOrder". Biography and Cloudinary public ID are optional.'
+            description='Each member requires "id", "name", "role", "imageUrl", "imageAlt", and numeric "displayOrder". Biography and Image object key are optional.'
           />
         </FormSection>
 

@@ -14,7 +14,7 @@ describe("service admin schema", () => {
       slug: "architecture-design",
       shortDescription: " A complete architecture design service. ",
       description: " A complete description of the architecture design service. ",
-      images: [{ url: "https://res.cloudinary.com/demo/image/upload/a.jpg", publicId: "sketchplan/a", alt: "" }],
+      images: [{ url: "https://cdn.test.example/sketchplan/a.jpg", publicId: "sketchplan/a", alt: "" }],
       imageAlt: " Architectural model ",
       features: [{ value: " Planning " }, { value: "" }],
     };

@@ -433,7 +433,7 @@ export function ProjectsAdminScreen() {
             <AlertDialogTitle>Delete project?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget
-                ? `“${deleteTarget.title}” and its stored project record will be permanently deleted. Cloudinary assets are not automatically removed.`
+                ? `“${deleteTarget.title}” and its stored project record will be permanently deleted. R2 objects are not automatically removed.`
                 : "This project will be permanently deleted."}
             </AlertDialogDescription>
           </AlertDialogHeader>

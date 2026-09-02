@@ -39,7 +39,7 @@ const optionalText = (label: string, maximum: number) =>
       `${label} contains unsupported characters.`,
     );
 
-const publicIdSchema = optionalText("Cloudinary public ID", 300);
+const publicIdSchema = optionalText("Image object key", 300);
 const imageUrlSchema = z
   .string()
   .trim()

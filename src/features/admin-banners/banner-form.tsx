@@ -218,7 +218,7 @@ export function BannerForm({ initialBanner }: BannerFormProps) {
             <CardHeader>
               <CardTitle>Desktop artwork</CardTitle>
               <CardDescription>
-                Required image used for wide viewports. Upload or paste existing Cloudinary details.
+                Required image used for wide viewports. Upload or paste an existing image URL and object key.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5 sm:grid-cols-2">
@@ -247,7 +247,7 @@ export function BannerForm({ initialBanner }: BannerFormProps) {
               />
               <ScheduledContentFormField
                 htmlFor="banner-desktop-url"
-                label="Cloudinary HTTPS URL"
+                label="Image HTTPS URL"
                 required
                 error={form.formState.errors.desktopImageUrl?.message}
                 className="sm:col-span-2"
@@ -255,14 +255,14 @@ export function BannerForm({ initialBanner }: BannerFormProps) {
                 <Input
                   id="banner-desktop-url"
                   type="url"
-                  placeholder="https://res.cloudinary.com/…"
+                  placeholder="https://cdn.example.com/sketchplan/…"
                   {...form.register("desktopImageUrl")}
                   aria-invalid={Boolean(form.formState.errors.desktopImageUrl)}
                 />
               </ScheduledContentFormField>
               <ScheduledContentFormField
                 htmlFor="banner-desktop-public-id"
-                label="Cloudinary public ID"
+                label="Image object key"
                 error={form.formState.errors.desktopImagePublicId?.message}
               >
                 <Input id="banner-desktop-public-id" {...form.register("desktopImagePublicId")} />
@@ -314,21 +314,21 @@ export function BannerForm({ initialBanner }: BannerFormProps) {
               />
               <ScheduledContentFormField
                 htmlFor="banner-mobile-url"
-                label="Cloudinary HTTPS URL"
+                label="Image HTTPS URL"
                 error={form.formState.errors.mobileImageUrl?.message}
                 className="sm:col-span-2"
               >
                 <Input
                   id="banner-mobile-url"
                   type="url"
-                  placeholder="https://res.cloudinary.com/…"
+                  placeholder="https://cdn.example.com/sketchplan/…"
                   {...form.register("mobileImageUrl")}
                   aria-invalid={Boolean(form.formState.errors.mobileImageUrl)}
                 />
               </ScheduledContentFormField>
               <ScheduledContentFormField
                 htmlFor="banner-mobile-public-id"
-                label="Cloudinary public ID"
+                label="Image object key"
                 error={form.formState.errors.mobileImagePublicId?.message}
               >
                 <Input id="banner-mobile-public-id" {...form.register("mobileImagePublicId")} />
