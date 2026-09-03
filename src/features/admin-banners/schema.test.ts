@@ -9,10 +9,10 @@ import { bannerFormSchema, type BannerFormValues } from "./schema";
 const VALID_BANNER: BannerFormValues = {
   title: "Summer studio showcase",
   subtitle: "Explore our newest residential work.",
-  desktopImageUrl: "https://cdn.test.example/sketchplan/banner.webp",
+  desktopImageUrl: "https://res.cloudinary.com/demo/banner.webp",
   desktopImagePublicId: "sketchplan/banner",
   desktopImageAlt: "Contemporary house exterior at sunset",
-  mobileImageUrl: "https://cdn.test.example/sketchplan/banner-mobile.webp",
+  mobileImageUrl: "https://res.cloudinary.com/demo/banner-mobile.webp",
   mobileImagePublicId: "sketchplan/banner-mobile",
   mobileImageAlt: "Contemporary house exterior",
   buttonText: "View projects",

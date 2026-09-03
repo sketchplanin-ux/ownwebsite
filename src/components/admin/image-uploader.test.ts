@@ -2,55 +2,32 @@ import { describe, expect, it } from "vitest";
 
 import {
   createSafeFileStem,
-  parseMediaUploadPayload,
+  parseCloudinaryPayload,
 } from "@/components/admin/image-uploader";
 
-describe("R2 upload response validation", () => {
+describe("Cloudinary upload response validation", () => {
   const validPayload = {
-    url: "https://cdn.test.example/sketchplan/example-a1b2c3d4e5f6.webp",
-    key: "sketchplan/example-a1b2c3d4e5f6.webp",
-    contentType: "image/webp",
+    secure_url: "https://res.cloudinary.com/demo/image/upload/sketchplan/example.webp",
+    public_id: "sketchplan/example",
+    width: 1200,
+    height: 800,
+    format: "webp",
     bytes: 500_000,
   };
 
-  it("accepts a bounded HTTPS response from the media host", () => {
-    expect(parseMediaUploadPayload(validPayload)).toMatchObject({
-      url: validPayload.url,
-      key: validPayload.key,
-      contentType: "image/webp",
+  it("accepts a bounded HTTPS image response", () => {
+    expect(parseCloudinaryPayload(validPayload)).toMatchObject({
+      secureUrl: validPayload.secure_url,
+      publicId: validPayload.public_id,
+      format: "webp",
     });
   });
 
-  it("rejects an insecure URL or a host that is not the media bucket", () => {
+  it("rejects an insecure URL or disallowed response format", () => {
     expect(
-      parseMediaUploadPayload({ ...validPayload, url: "http://cdn.test.example/a.webp" }),
+      parseCloudinaryPayload({ ...validPayload, secure_url: "http://example.com/a.webp" }),
     ).toBeNull();
-    expect(
-      parseMediaUploadPayload({
-        ...validPayload,
-        url: "https://attacker.example/sketchplan/a.webp",
-      }),
-    ).toBeNull();
-  });
-
-  it("rejects a disallowed content type, object prefix, or extension", () => {
-    expect(
-      parseMediaUploadPayload({ ...validPayload, contentType: "image/gif" }),
-    ).toBeNull();
-    expect(
-      parseMediaUploadPayload({
-        ...validPayload,
-        url: "https://cdn.test.example/elsewhere/example.webp",
-        key: "elsewhere/example.webp",
-      }),
-    ).toBeNull();
-    expect(
-      parseMediaUploadPayload({
-        ...validPayload,
-        url: "https://cdn.test.example/sketchplan/example.svg",
-        key: "sketchplan/example.svg",
-      }),
-    ).toBeNull();
+    expect(parseCloudinaryPayload({ ...validPayload, format: "gif" })).toBeNull();
   });
 
   it("creates a safe ASCII file stem", () => {

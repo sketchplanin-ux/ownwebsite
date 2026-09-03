@@ -18,12 +18,12 @@ const validProject: ProjectFormValues = {
   clientName: "",
   projectType: "Residential",
   completionDate: "2026-08-02",
-  coverImageUrl: "https://cdn.test.example/sketchplan/cover.webp",
+  coverImageUrl: "https://res.cloudinary.com/example/image/upload/cover.webp",
   coverImagePublicId: "sketchplan/projects/cover",
   coverImageAlt: "Courtyard house exterior",
   galleryImages: [
     {
-      url: "https://cdn.test.example/sketchplan/gallery-1.webp",
+      url: "https://res.cloudinary.com/example/image/upload/gallery-1.webp",
       publicId: "sketchplan/projects/gallery-1",
       alt: "Courtyard view",
       displayOrder: 0,
@@ -60,7 +60,7 @@ describe("admin project schemas", () => {
   it("rejects non-HTTPS media URLs", () => {
     const result = projectFormSchema.safeParse({
       ...validProject,
-      coverImageUrl: "http://cdn.test.example/sketchplan/cover.webp",
+      coverImageUrl: "http://res.cloudinary.com/example/cover.webp",
     });
     expect(result.success).toBe(false);
   });
@@ -91,7 +91,7 @@ describe("admin project schemas", () => {
         galleryImages: [
           { ...validProject.galleryImages[0], displayOrder: 14 },
           {
-            url: "https://cdn.test.example/sketchplan/gallery-2.webp",
+            url: "https://res.cloudinary.com/example/image/upload/gallery-2.webp",
             publicId: "",
             alt: "Interior view",
             displayOrder: 3,

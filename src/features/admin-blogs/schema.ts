@@ -218,7 +218,7 @@ export const blogFormSchema = z.object({
     .min(1, "Upload a featured image.")
     .max(2_048, "Featured image URL is too long.")
     .refine(isSafeHttpUrl, "Use a valid HTTP or HTTPS image URL."),
-  featuredImagePublicId: optionalText("Image object key", 300),
+  featuredImagePublicId: optionalText("Cloudinary public ID", 300),
   featuredImageAlt: cleanText("Featured image alternative text", 180),
   author: cleanText("Author", 120),
   category: optionalText("Category", 120),

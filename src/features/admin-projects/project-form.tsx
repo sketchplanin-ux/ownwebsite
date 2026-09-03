@@ -407,7 +407,7 @@ export function ProjectForm({
             <CardHeader>
               <CardTitle>Cover image</CardTitle>
               <CardDescription>
-                Upload through the configured media service, or paste an
+                Upload through the configured Cloudinary preset, or paste an
                 existing secure URL and public ID.
               </CardDescription>
             </CardHeader>
@@ -415,7 +415,7 @@ export function ProjectForm({
               <ImageUploader
                 className="sm:col-span-2"
                 label="Upload cover image"
-                description="Upload one JPG, PNG, or WebP to the media bucket. The HTTPS URL and object key are copied into the fields below."
+                description="Upload one JPG, PNG, or WebP to the configured Cloudinary account. The secure URL and public ID are copied into the fields below."
                 required
                 disabled={isSaving}
                 value={coverUploaderValue}
@@ -446,7 +446,7 @@ export function ProjectForm({
               ) : null}
               <AdminFormField
                 htmlFor="cover-image-url"
-                label="Image HTTPS URL"
+                label="Cloudinary HTTPS URL"
                 required
                 error={form.formState.errors.coverImageUrl?.message}
                 className="sm:col-span-2"
@@ -454,14 +454,14 @@ export function ProjectForm({
                 <Input
                   id="cover-image-url"
                   type="url"
-                  placeholder="https://cdn.example.com/sketchplan/…"
+                  placeholder="https://res.cloudinary.com/…"
                   {...form.register("coverImageUrl")}
                   aria-invalid={Boolean(form.formState.errors.coverImageUrl)}
                 />
               </AdminFormField>
               <AdminFormField
                 htmlFor="cover-image-public-id"
-                label="Image object key"
+                label="Cloudinary public ID"
                 error={form.formState.errors.coverImagePublicId?.message}
               >
                 <Input
@@ -502,7 +502,7 @@ export function ProjectForm({
               <ImageUploader
                 className="mb-6"
                 label="Upload gallery images"
-                description="Upload up to 30 images to the media bucket. Complete the alt text below, then use the arrow controls to refine display order."
+                description="Upload up to 30 images to Cloudinary. Complete the alt text below, then use the arrow controls to refine display order."
                 multiple
                 maxCount={30}
                 disabled={isSaving}
@@ -597,7 +597,7 @@ export function ProjectForm({
                         <div className="grid gap-4 sm:grid-cols-2">
                           <AdminFormField
                             htmlFor={`gallery-url-${field.id}`}
-                            label="Image HTTPS URL"
+                            label="Cloudinary HTTPS URL"
                             required
                             error={errors?.url?.message}
                             className="sm:col-span-2"
@@ -605,14 +605,14 @@ export function ProjectForm({
                             <Input
                               id={`gallery-url-${field.id}`}
                               type="url"
-                              placeholder="https://cdn.example.com/sketchplan/…"
+                              placeholder="https://res.cloudinary.com/…"
                               {...form.register(`galleryImages.${index}.url`)}
                               aria-invalid={Boolean(errors?.url)}
                             />
                           </AdminFormField>
                           <AdminFormField
                             htmlFor={`gallery-public-id-${field.id}`}
-                            label="Image object key"
+                            label="Cloudinary public ID"
                             error={errors?.publicId?.message}
                           >
                             <Input

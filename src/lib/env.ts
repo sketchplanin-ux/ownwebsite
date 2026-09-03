@@ -8,8 +8,8 @@ const publicEnvironmentSchema = z.object({
   firebaseMessagingSenderId: z.string().min(1),
   firebaseAppId: z.string().min(1),
   firebaseMeasurementId: z.string().optional(),
-  mediaBaseUrl: z.url(),
-  mediaUploadUrl: z.url(),
+  cloudinaryCloudName: z.string().min(1),
+  cloudinaryUploadPreset: z.string().min(1),
   siteUrl: z.url().or(z.literal("")),
   whatsappNumber: z.string(),
 });
@@ -23,8 +23,8 @@ const parsedEnvironment = publicEnvironmentSchema.safeParse({
     process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   firebaseAppId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   firebaseMeasurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-  mediaBaseUrl: process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL,
-  mediaUploadUrl: process.env.NEXT_PUBLIC_MEDIA_UPLOAD_URL,
+  cloudinaryCloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  cloudinaryUploadPreset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "",
   whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "",
 });
@@ -40,7 +40,3 @@ if (!parsedEnvironment.success) {
 }
 
 export const publicEnvironment = Object.freeze(parsedEnvironment.data);
-
-/** Hostname that serves R2 objects, used to gate image transformation URLs. */
-export const mediaHostname = new URL(publicEnvironment.mediaBaseUrl).hostname
-  .toLowerCase();

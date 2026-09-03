@@ -9,7 +9,6 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { firebaseAuth } from "@/firebase/config"
 import {
   ALLOWED_IMAGE_MIME_TYPES,
   MAX_IMAGE_SIZE_BYTES,
@@ -18,8 +17,10 @@ import { publicEnvironment } from "@/lib/env"
 import { isSafeHttpUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
 
-const MEDIA_OBJECT_PREFIX = "sketchplan"
-const ALLOWED_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"])
+const CLOUDINARY_FOLDER = "sketchplan"
+const CLOUDINARY_CLOUD_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/
+const CLOUDINARY_UPLOAD_PRESET_PATTERN = /^[a-zA-Z0-9_-]+$/
+const ALLOWED_CLOUDINARY_FORMATS = new Set(["jpg", "jpeg", "png", "webp"])
 const MAX_UPLOADER_COUNT = 30
 
 interface ImageUploaderImage {
@@ -51,50 +52,50 @@ interface UploadTask {
   progress: number
 }
 
-/** Shape returned by the media Worker after it writes the object to R2. */
-interface MediaUploadPayload {
+interface CloudinaryUploadPayload {
   bytes: number
-  contentType: string
-  key: string
-  url: string
+  format: string
+  height: number
+  publicId: string
+  secureUrl: string
+  width: number
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
 }
 
-function readFileExtension(objectKey: string) {
-  const match = /\.([a-z0-9]+)$/.exec(objectKey.toLocaleLowerCase("en-US"))
-  return match ? match[1] : ""
-}
-
-function parseMediaUploadPayload(value: unknown): MediaUploadPayload | null {
+function parseCloudinaryPayload(value: unknown): CloudinaryUploadPayload | null {
   if (!isRecord(value)) {
     return null
   }
 
-  const { url, key, contentType, bytes } = value
+  const secureUrl = value.secure_url
+  const publicId = value.public_id
+  const width = value.width
+  const height = value.height
+  const format = value.format
+  const bytes = value.bytes
 
+  const normalizedFormat = typeof format === "string" ? format.toLocaleLowerCase("en-US") : ""
   let usesHttps = false
   try {
-    usesHttps = typeof url === "string" && new URL(url).protocol === "https:"
+    usesHttps = typeof secureUrl === "string" && new URL(secureUrl).protocol === "https:"
   } catch {
     usesHttps = false
   }
 
   if (
-    typeof url !== "string" ||
+    typeof secureUrl !== "string" ||
     !usesHttps ||
-    !isSafeHttpUrl(url) ||
-    !url.startsWith(`${publicEnvironment.mediaBaseUrl.replace(/\/+$/, "")}/`) ||
-    typeof key !== "string" ||
-    !key.startsWith(`${MEDIA_OBJECT_PREFIX}/`) ||
-    key.includes("..") ||
-    !ALLOWED_IMAGE_EXTENSIONS.has(readFileExtension(key)) ||
-    typeof contentType !== "string" ||
-    !ALLOWED_IMAGE_MIME_TYPES.includes(
-      contentType as (typeof ALLOWED_IMAGE_MIME_TYPES)[number]
-    ) ||
+    !isSafeHttpUrl(secureUrl) ||
+    typeof publicId !== "string" ||
+    publicId.trim() === "" ||
+    typeof width !== "number" ||
+    !Number.isFinite(width) ||
+    typeof height !== "number" ||
+    !Number.isFinite(height) ||
+    !ALLOWED_CLOUDINARY_FORMATS.has(normalizedFormat) ||
     typeof bytes !== "number" ||
     !Number.isFinite(bytes) ||
     bytes <= 0 ||
@@ -103,10 +104,17 @@ function parseMediaUploadPayload(value: unknown): MediaUploadPayload | null {
     return null
   }
 
-  return { url, key, contentType, bytes }
+  return {
+    secureUrl,
+    publicId,
+    width,
+    height,
+    format: normalizedFormat,
+    bytes,
+  }
 }
 
-function readUploadError(value: unknown) {
+function readCloudinaryError(value: unknown) {
   if (!isRecord(value) || !isRecord(value.error)) {
     return null
   }
@@ -178,43 +186,37 @@ function validateImageFile(file: File, maximumBytes: number) {
   return null
 }
 
-/**
- * R2 stores bytes only, so intrinsic dimensions are measured in the browser
- * instead of being read back from the storage response.
- */
-async function readImageDimensions(file: File) {
-  if (typeof globalThis.createImageBitmap !== "function") {
-    return null
-  }
-
-  try {
-    const bitmap = await globalThis.createImageBitmap(file)
-    const { width, height } = bitmap
-    bitmap.close?.()
-    return Number.isFinite(width) && Number.isFinite(height) && width > 0
-      ? { width, height }
-      : null
-  } catch {
-    return null
-  }
-}
-
 function uploadImage(
   file: File,
-  idToken: string,
   signal: AbortSignal,
   onProgress: (progress: number) => void
 ) {
-  return new Promise<MediaUploadPayload>((resolve, reject) => {
+  return new Promise<CloudinaryUploadPayload>((resolve, reject) => {
+    const { cloudinaryCloudName, cloudinaryUploadPreset } = publicEnvironment
+    if (
+      !CLOUDINARY_CLOUD_NAME_PATTERN.test(cloudinaryCloudName) ||
+      !CLOUDINARY_UPLOAD_PRESET_PATTERN.test(cloudinaryUploadPreset)
+    ) {
+      reject(new Error("Cloudinary is not configured correctly."))
+      return
+    }
+
     const request = new XMLHttpRequest()
+    const endpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudinaryCloudName)}/image/upload`
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("upload_preset", cloudinaryUploadPreset)
+    formData.append("folder", CLOUDINARY_FOLDER)
+    formData.append(
+      "public_id",
+      `${createSafeFileStem(file.name)}-${createUniqueSuffix(file)}`
+    )
+
     const abortRequest = () => request.abort()
     signal.addEventListener("abort", abortRequest, { once: true })
 
-    request.open("POST", publicEnvironment.mediaUploadUrl)
+    request.open("POST", endpoint)
     request.timeout = 120_000
-    request.setRequestHeader("Authorization", `Bearer ${idToken}`)
-    request.setRequestHeader("Content-Type", file.type)
-    request.setRequestHeader("X-File-Name", createSafeFileStem(file.name))
     request.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable && event.total > 0) {
         onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)))
@@ -227,23 +229,23 @@ function uploadImage(
       try {
         response = JSON.parse(request.responseText)
       } catch {
-        reject(new Error("The upload service returned an unreadable response."))
+        reject(new Error("Cloudinary returned an unreadable response."))
         return
       }
 
       if (request.status < 200 || request.status >= 300) {
         reject(
           new Error(
-            readUploadError(response) ??
+            readCloudinaryError(response) ??
               "The image could not be uploaded. Please try again."
           )
         )
         return
       }
 
-      const parsed = parseMediaUploadPayload(response)
+      const parsed = parseCloudinaryPayload(response)
       if (!parsed) {
-        reject(new Error("The upload service returned incomplete image details."))
+        reject(new Error("Cloudinary returned incomplete image details."))
         return
       }
 
@@ -262,7 +264,7 @@ function uploadImage(
       signal.removeEventListener("abort", abortRequest)
       reject(new Error("Upload cancelled."))
     })
-    request.send(file)
+    request.send(formData)
   })
 }
 
@@ -343,38 +345,24 @@ function ImageUploader({
     ])
 
     try {
-      const currentUser = firebaseAuth.currentUser
-      if (!currentUser) {
-        throw new Error("Your session expired. Sign in again to upload images.")
-      }
-
-      const [idToken, dimensions] = await Promise.all([
-        currentUser.getIdToken(),
-        readImageDimensions(file),
-      ])
-
-      const result = await uploadImage(
-        file,
-        idToken,
-        controller.signal,
-        (progress) => {
-          setTasks((currentTasks) =>
-            currentTasks.map((task) =>
-              task.id === id ? { ...task, progress } : task
-            )
+      const result = await uploadImage(file, controller.signal, (progress) => {
+        setTasks((currentTasks) =>
+          currentTasks.map((task) =>
+            task.id === id ? { ...task, progress } : task
           )
-        }
-      )
+        )
+      })
 
       if (controller.signal.aborted) {
         return
       }
 
       const uploadedImage: ImageUploaderImage = {
-        url: result.url,
-        publicId: result.key,
+        url: result.secureUrl,
+        publicId: result.publicId,
+        width: result.width,
+        height: result.height,
         alt: "",
-        ...(dimensions ?? {}),
       }
       const nextImages = [
         ...valueRef.current,
@@ -500,7 +488,7 @@ function ImageUploader({
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {value.map((image, index) => (
             <figure key={`${image.url}-${index}`} className="overflow-hidden rounded-xl border bg-card">
-              {/* Remote R2 URLs are served through the Cloudflare image pipeline. */}
+              {/* Remote Cloudinary URLs are already optimized by Cloudinary. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={image.url}
@@ -584,7 +572,7 @@ function ImageUploader({
       )}
 
       <p className="text-xs leading-5 text-muted-foreground">
-        Removing an image here only detaches it from this entry. It does not delete the object from R2.
+        Removing an image here only detaches it from this entry. It does not delete the asset from Cloudinary.
       </p>
       <p className="sr-only" aria-live="polite">
         {value.length} image{value.length === 1 ? "" : "s"} attached. {activeTaskCount} uploading.
@@ -594,11 +582,11 @@ function ImageUploader({
 }
 
 export {
+  CLOUDINARY_FOLDER,
   ImageUploader,
-  MEDIA_OBJECT_PREFIX,
   createSafeFileStem,
   normalizeMaximumBytes,
-  parseMediaUploadPayload,
+  parseCloudinaryPayload,
   validateImageFile,
   type ImageUploaderImage,
   type ImageUploaderProps,

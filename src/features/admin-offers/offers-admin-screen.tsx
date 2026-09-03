@@ -351,7 +351,7 @@ export function OffersAdminScreen() {
             <AlertDialogTitle>Delete offer?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget
-                ? `“${deleteTarget.title}” will be permanently deleted. R2 objects are not automatically removed.`
+                ? `“${deleteTarget.title}” will be permanently deleted. Cloudinary assets are not automatically removed.`
                 : "This offer will be permanently deleted."}
             </AlertDialogDescription>
           </AlertDialogHeader>

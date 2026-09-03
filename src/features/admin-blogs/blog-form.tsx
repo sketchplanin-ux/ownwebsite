@@ -338,7 +338,7 @@ export function BlogForm({ initialBlog }: BlogFormProps) {
             <CardHeader>
               <CardTitle>Featured image</CardTitle>
               <CardDescription>
-                Upload one image and provide meaningful alt text.
+                Upload one image through Cloudinary and provide meaningful alt text.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5 sm:grid-cols-2">
@@ -392,7 +392,7 @@ export function BlogForm({ initialBlog }: BlogFormProps) {
                   id="featured-image-url"
                   type="url"
                   disabled={fieldsDisabled}
-                  placeholder="https://cdn.example.com/sketchplan/…"
+                  placeholder="https://res.cloudinary.com/…"
                   {...form.register("featuredImageUrl")}
                   aria-invalid={Boolean(form.formState.errors.featuredImageUrl)}
                 />
@@ -400,7 +400,7 @@ export function BlogForm({ initialBlog }: BlogFormProps) {
 
               <AdminBlogFormField
                 htmlFor="featured-image-public-id"
-                label="Image object key"
+                label="Cloudinary public ID"
                 error={form.formState.errors.featuredImagePublicId?.message}
               >
                 <Input

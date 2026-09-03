@@ -116,7 +116,7 @@ function ServicesAdminScreen() {
 
     try {
       await deleteMutation.mutateAsync(serviceToDelete.id)
-      toast.success("Service deleted. Its stored image was left unchanged.")
+      toast.success("Service deleted. Its Cloudinary image was left unchanged.")
       setServiceToDelete(null)
       if (services.length === 1 && pageIndex > 0) {
         setPageIndex((currentPage) => currentPage - 1)
@@ -335,7 +335,7 @@ function ServicesAdminScreen() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete service?</AlertDialogTitle>
             <AlertDialogDescription>
-              “{serviceToDelete?.title}” will be permanently removed from Firestore. Its stored image will not be deleted.
+              “{serviceToDelete?.title}” will be permanently removed from Firestore. Its Cloudinary image will not be deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

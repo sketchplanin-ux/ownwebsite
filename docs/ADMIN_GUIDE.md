@@ -28,7 +28,7 @@ Use **Homepage** to edit the Home, About, and Contact page documents.
 - Create or edit the title first to generate a slug; adjust the slug only when necessary.
 - Supply a concise card description, full description, meaningful image alt text, features, display order, and optional SEO values.
 - `Featured` controls homepage eligibility; `Published` controls public visibility.
-- Confirm destructive deletion. Stored image files are not destroyed automatically.
+- Confirm destructive deletion. Cloudinary files are not destroyed automatically.
 
 ## Projects and categories
 
@@ -76,9 +76,9 @@ After changing the site URL or static SEO expectations, rebuild and redeploy the
 
 ## Image uploads
 
-Accepted browser uploads are JPG/JPEG, PNG, and WebP up to 10 MB. Wait for the upload to complete before saving the form. A successful upload stores both the HTTPS image URL and the storage object key in Firestore.
+Accepted browser uploads are JPG/JPEG, PNG, and WebP up to 10 MB. Wait for the upload to complete before saving the form. A successful upload stores both the secure Cloudinary URL and public ID in Firestore.
 
-Replacing or deleting a reference does not delete the stored image file. Ask a developer to remove orphaned objects from the Cloudflare R2 bucket.
+Replacing or deleting a reference does not delete the Cloudinary asset because the browser never receives the API secret. Remove orphaned assets manually in the Cloudinary console through an authorized account.
 
 ## Roles
 
@@ -97,4 +97,4 @@ Replacing or deleting a reference does not delete the stored image file. Ask a d
 - Preview services, projects, and blogs.
 - Confirm scheduling uses the intended local time.
 - Keep at least one active Super Admin.
-- Never share passwords, Firebase private keys, or Cloudflare API tokens.
+- Never share passwords, Firebase private keys, or Cloudinary API secrets.

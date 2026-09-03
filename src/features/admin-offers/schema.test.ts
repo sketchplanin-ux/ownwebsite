@@ -9,7 +9,7 @@ import { offerFormSchema, type OfferFormValues } from "./schema";
 const VALID_OFFER: OfferFormValues = {
   title: "Design consultation",
   description: "Book a limited introductory consultation with our studio.",
-  imageUrl: "https://cdn.test.example/sketchplan/offer.webp",
+  imageUrl: "https://res.cloudinary.com/demo/offer.webp",
   imagePublicId: "sketchplan/offer",
   imageAlt: "Architect reviewing a floor plan",
   buttonText: "Contact us",

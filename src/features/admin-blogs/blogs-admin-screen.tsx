@@ -331,7 +331,7 @@ export function BlogsAdminScreen() {
             <AlertDialogTitle>Delete blog post?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget
-                ? `“${deleteTarget.title}” and its stored blog record will be permanently deleted. R2 objects are not automatically removed.`
+                ? `“${deleteTarget.title}” and its stored blog record will be permanently deleted. Cloudinary assets are not automatically removed.`
                 : "This blog post will be permanently deleted."}
             </AlertDialogDescription>
           </AlertDialogHeader>

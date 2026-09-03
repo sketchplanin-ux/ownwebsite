@@ -187,7 +187,7 @@ function GeneralSettingsForm() {
             error={errors.logoUrl?.message}
             disabled={mutation.isPending}
             placeholder="https://… or /brand/logo.png"
-            description="Use an existing media bucket URL or a public site asset."
+            description="Use an existing Cloudinary URL or a public site asset."
           />
           <FormField
             id="settings-logo-alt"

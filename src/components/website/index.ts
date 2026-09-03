@@ -13,7 +13,7 @@ export {
 } from "./navbar"
 export {
   ResponsiveImage,
-  buildTransformedImageUrl,
+  buildCloudinaryImageUrl,
   type ResponsiveImageProps,
 } from "./responsive-image"
 export { ScrollToTop, type ScrollToTopProps } from "./scroll-to-top"

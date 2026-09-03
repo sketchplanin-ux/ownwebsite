@@ -162,7 +162,7 @@ async function deleteAdminService(serviceId: string) {
     throw new Error("The service identifier is invalid.")
   }
 
-  // This removes only the Firestore document. R2 object deletion requires a
+  // This removes only the Firestore document. Cloudinary deletion requires a
   // secret-backed server operation and is intentionally not attempted here.
   await removeDocument(COLLECTIONS.services, serviceId)
 }
