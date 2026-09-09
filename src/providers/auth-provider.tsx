@@ -10,12 +10,21 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { User } from "firebase/auth";
+import type {
+  ConfirmationResult,
+  RecaptchaVerifier,
+  User,
+  UserCredential,
+} from "firebase/auth";
 
 import {
+  confirmPhoneVerificationCode,
+  createRecaptchaVerifier,
   getAdminAccess,
   loginWithEmailAndPassword,
+  loginWithGoogle as signInWithGoogleAccount,
   logoutAdmin,
+  requestPhoneVerificationCode,
   subscribeToAuthState,
 } from "@/firebase/auth";
 import {
@@ -49,17 +58,37 @@ export const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<AuthState>(INITIAL_AUTH_STATE);
+  const [pendingPhoneNumber, setPendingPhoneNumber] = useState<string | null>(
+    null,
+  );
   const sessionVersionRef = useRef(0);
   const accessRequestRef = useRef<{
     uid: string;
     promise: ReturnType<typeof getAdminAccess>;
   } | null>(null);
   const rejectionRef = useRef<"inactive" | "unauthorized" | null>(null);
+  const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
+  const phoneChallengeRef = useRef<ConfirmationResult | null>(null);
 
   const clearPrivateSessionData = useCallback(() => {
     accessRequestRef.current = null;
     queryClient.clear();
   }, [queryClient]);
+
+  const clearPhoneChallenge = useCallback(() => {
+    try {
+      recaptchaRef.current?.clear();
+    } catch (error) {
+      // The widget's container can already be gone when the form unmounts.
+      logFirebaseError("reCAPTCHA teardown", error);
+    }
+
+    recaptchaRef.current = null;
+    phoneChallengeRef.current = null;
+    setPendingPhoneNumber(null);
+  }, []);
+
+  useEffect(() => clearPhoneChallenge, [clearPhoneChallenge]);
 
   const requestAdminAccess = useCallback((uid: string) => {
     if (accessRequestRef.current?.uid === uid) {
@@ -203,8 +232,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }, [verifyAdmin]);
 
-  const login = useCallback(
-    async (email: string, password: string): Promise<void> => {
+  // Shared tail for every sign-in method: reset session state, run the
+  // provider-specific sign-in, then gate on the admins/{uid} profile.
+  const completeSignIn = useCallback(
+    async (signIn: () => Promise<UserCredential>): Promise<void> => {
       rejectionRef.current = null;
       accessRequestRef.current = null;
       setState({
@@ -215,7 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       try {
-        const credential = await loginWithEmailAndPassword(email, password);
+        const credential = await signIn();
         await verifyAdmin(credential.user, sessionVersionRef.current);
       } catch (error) {
         const friendlyError = mapFirebaseError(
@@ -246,9 +277,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [verifyAdmin],
   );
 
+  const login = useCallback(
+    (email: string, password: string): Promise<void> =>
+      completeSignIn(() => loginWithEmailAndPassword(email, password)),
+    [completeSignIn],
+  );
+
+  const loginWithGoogle = useCallback(
+    (): Promise<void> => completeSignIn(signInWithGoogleAccount),
+    [completeSignIn],
+  );
+
+  const sendPhoneCode = useCallback(
+    async (phoneNumber: string, recaptchaContainer: HTMLElement) => {
+      // Each attempt gets a fresh verifier: a solved reCAPTCHA token cannot be
+      // reused, so a stale one makes every retry fail.
+      clearPhoneChallenge();
+      const verifier = createRecaptchaVerifier(recaptchaContainer);
+      recaptchaRef.current = verifier;
+
+      try {
+        phoneChallengeRef.current = await requestPhoneVerificationCode(
+          phoneNumber,
+          verifier,
+        );
+        setPendingPhoneNumber(phoneNumber.trim());
+      } catch (error) {
+        clearPhoneChallenge();
+        throw mapFirebaseError(
+          error,
+          "Unable to send the verification code. Please try again.",
+        );
+      }
+    },
+    [clearPhoneChallenge],
+  );
+
+  const confirmPhoneCode = useCallback(
+    async (code: string): Promise<void> => {
+      const challenge = phoneChallengeRef.current;
+
+      if (!challenge) {
+        throw createFirebaseError("auth/phone-challenge-missing");
+      }
+
+      try {
+        await completeSignIn(() =>
+          confirmPhoneVerificationCode(challenge, code),
+        );
+      } finally {
+        clearPhoneChallenge();
+      }
+    },
+    [clearPhoneChallenge, completeSignIn],
+  );
+
   const logout = useCallback(async (): Promise<void> => {
     rejectionRef.current = null;
     ++sessionVersionRef.current;
+    clearPhoneChallenge();
 
     try {
       await logoutAdmin();
@@ -261,7 +348,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: null,
       });
     }
-  }, [clearPrivateSessionData]);
+  }, [clearPhoneChallenge, clearPrivateSessionData]);
 
   const refreshAdmin = useCallback(async (): Promise<void> => {
     if (!state.firebaseUser) {
@@ -294,13 +381,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated:
         state.status === "authenticated" && state.adminUser?.active === true,
       error: state.error,
+      pendingPhoneNumber,
       login,
+      loginWithGoogle,
+      sendPhoneCode,
+      confirmPhoneCode,
+      cancelPhoneLogin: clearPhoneChallenge,
       logout,
       refreshAdmin,
     }),
-    [login, logout, refreshAdmin, state],
+    [
+      clearPhoneChallenge,
+      confirmPhoneCode,
+      login,
+      loginWithGoogle,
+      logout,
+      pendingPhoneNumber,
+      refreshAdmin,
+      sendPhoneCode,
+      state,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-

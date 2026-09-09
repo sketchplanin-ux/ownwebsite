@@ -9,7 +9,9 @@ const publicEnvironmentSchema = z.object({
   firebaseAppId: z.string().min(1),
   firebaseMeasurementId: z.string().optional(),
   cloudinaryCloudName: z.string().min(1),
-  cloudinaryUploadPreset: z.string().min(1),
+  // Optional on purpose: a blank preset disables the admin image uploader,
+  // which re-checks it at upload time. It must not stop the app from booting.
+  cloudinaryUploadPreset: z.string().default(""),
   siteUrl: z.url().or(z.literal("")),
   whatsappNumber: z.string(),
 });

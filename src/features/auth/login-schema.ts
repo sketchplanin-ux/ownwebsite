@@ -20,6 +20,28 @@ export const loginSchema = z.object({
 
 export type LoginFormValues = z.infer<typeof loginSchema>;
 
+export const phoneNumberSchema = z.object({
+  phoneNumber: z
+    .string()
+    .trim()
+    .min(1, "Enter your phone number.")
+    .regex(
+      /^\+[1-9]\d{7,14}$/,
+      "Use international format, such as +919876543210.",
+    ),
+});
+
+export type PhoneNumberFormValues = z.infer<typeof phoneNumberSchema>;
+
+export const verificationCodeSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Enter the 6-digit code sent to your phone."),
+});
+
+export type VerificationCodeFormValues = z.infer<typeof verificationCodeSchema>;
+
 export function sanitizeAdminReturnTo(value: string | null | undefined): string {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
     return DEFAULT_ADMIN_DESTINATION;

@@ -10,7 +10,7 @@ The public site uses a fixed architectural navigation rail on desktop, a left dr
 Browser / static Firebase Hosting files
   ├─ Public pages → bounded Firestore reads of published/active documents
   ├─ Contact form → validated Firestore lead create
-  ├─ Admin login → Firebase email/password authentication
+  ├─ Admin login → Firebase email/password, Google, or phone (SMS) authentication
   ├─ Admin access → admins/{uid} active-role check
   ├─ Admin CRUD → role-enforced Firestore reads/writes
   └─ Admin media → restricted unsigned Cloudinary uploads
@@ -74,7 +74,7 @@ Install and configure:
 
 ```bash
 npm install
-Copy-Item .env.example .env.local
+Copy-Item .env.example .env
 npm run dev
 ```
 
@@ -82,7 +82,7 @@ Open `http://localhost:3000/` for the public site and `http://localhost:3000/adm
 
 ## Environment variables
 
-Populate `.env.local`; never commit it.
+Populate `.env`; never commit it. `.gitignore` covers every `.env*` file except `.env.example`.
 
 ```env
 NEXT_PUBLIC_FIREBASE_API_KEY=
@@ -111,16 +111,25 @@ Never add any of the following to this project:
 
 ## Firebase project setup
 
-1. In Firebase Console, open project `sketchplan-web` or update `.firebaserc` deliberately if a different project is intended.
-2. Register a Web app and copy its client configuration into `.env.local`.
+1. In Firebase Console, open project `own-website-db` (the value in `.firebaserc`), or update `.firebaserc` deliberately if a different project is intended.
+2. Register a Web app and copy its client configuration into `.env`.
 3. Enable Firestore in Production mode.
-4. Under Authentication → Sign-in method, enable Email/Password.
-5. Add local and production domains under Authentication → Settings → Authorized domains.
+4. Under Authentication → Sign-in method, enable all three methods the admin login offers:
+   - **Email/Password**
+   - **Google** — pick a project support email; no client ID or secret is needed for the web SDK.
+   - **Phone** — SMS billing applies. Add test numbers under Phone → *Phone numbers for testing* to develop without spending SMS quota.
+5. Add local and production domains under Authentication → Settings → Authorized domains. Google popup sign-in and phone reCAPTCHA both reject unlisted domains. `localhost` is authorized by default; add the Hosting domains you deploy to.
 6. Do not enable public admin registration.
+
+### Admin sign-in methods
+
+All three methods land on the same gate: after Firebase authenticates the user, the app reads `admins/{uid}` and rejects anyone without an active admin document. Enabling a provider does **not** grant admin access on its own.
+
+Because the gate is keyed on the Firebase Auth UID, each admin gets one UID per provider they use. An admin who signs in with both Google and phone needs an `admins/{uid}` document for each of those UIDs, or should be told to use one method consistently. The `email` field on the admin document is the contact address on record — for phone sign-in it does not have to match anything in Firebase Auth, but it must be present and non-empty.
 
 ### Create the first admin
 
-1. In Firebase Console → Authentication → Users, create an email/password user.
+1. In Firebase Console → Authentication → Users, create the user — an email/password user, or sign in once with Google or phone so Firebase mints the UID.
 2. Copy the user UID.
 3. In Firestore Console, manually create `admins/{uid}` using that exact UID as the document ID:
 
@@ -227,8 +236,27 @@ Install the Firebase CLI and authenticate:
 ```bash
 npm install -g firebase-tools
 firebase login
-firebase use sketchplan-web
+firebase use own-website-db
 ```
+
+### Composite indexes must be deployed, not just declared
+
+`firestore.indexes.json` only *declares* indexes. They do not exist in a Firebase
+project until they are deployed. Every public listing filters and sorts in the
+same query, so a missing index makes that query fail with `failed-precondition`
+and the page renders its error state — with no other clue what is wrong. A newly
+created project has none of them.
+
+Check the live project at any time:
+
+```bash
+npm run check:indexes
+```
+
+It probes every declared index against the project named in `.env` and prints
+`ok`, `MISSING` (with a one-click creation link), or `skipped` for
+admin-only collections that cannot be probed anonymously. Run it after switching
+projects, and whenever a list is unexpectedly empty.
 
 Run security tests before deploying rules:
 
@@ -287,7 +315,7 @@ npm run lint
 npm test
 npm run test:rules
 npm run build
-firebase use sketchplan-web
+firebase use own-website-db
 firebase deploy --only firestore:rules,firestore:indexes
 firebase deploy --only hosting
 ```

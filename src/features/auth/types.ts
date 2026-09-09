@@ -17,8 +17,16 @@ export interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
+  /** Phone number awaiting an SMS code, or null when no challenge is open. */
+  pendingPhoneNumber: string | null;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  sendPhoneCode: (
+    phoneNumber: string,
+    recaptchaContainer: HTMLElement,
+  ) => Promise<void>;
+  confirmPhoneCode: (code: string) => Promise<void>;
+  cancelPhoneLogin: () => void;
   logout: () => Promise<void>;
   refreshAdmin: () => Promise<void>;
 }
-

@@ -3,10 +3,15 @@
 ## Sign in
 
 1. Open `/admin/login/`.
-2. Enter the Firebase Authentication email and password supplied by the project owner.
+2. Sign in with any of the three methods the project owner has provisioned for you:
+   - **Email** — the Firebase Authentication email and password you were supplied.
+   - **Google** — *Continue with Google* opens a Google account chooser. Allow pop-ups for the site.
+   - **Phone** — enter your number in international format (for example `+919876543210`), then enter the 6-digit code sent by SMS. *Use a different number* restarts the step.
 3. The application verifies the matching `admins/{uid}` document, its `active` flag, and role before opening the dashboard.
 
-There is no registration page. If access is rejected, confirm the Authentication user and Firestore admin document use the same UID and email, and that `active` is `true`.
+There is no registration page. Signing in successfully is not enough on its own — an active `admins/{uid}` document must exist for that user.
+
+If access is rejected, confirm the Authentication user and Firestore admin document use the same UID and that `active` is `true`. Note that each sign-in method gives you a **different UID**: signing in with Google when your admin document was created for an email/password user will be rejected. Use the method your admin document was created for, or ask the project owner to add a document for the other UID.
 
 ## Navigation
 

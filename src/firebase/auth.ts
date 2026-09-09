@@ -1,7 +1,12 @@
 import {
+  GoogleAuthProvider,
+  RecaptchaVerifier,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInWithPhoneNumber,
+  signInWithPopup,
   signOut,
+  type ConfirmationResult,
   type NextOrObserver,
   type Unsubscribe,
   type User,
@@ -72,6 +77,63 @@ export async function loginWithEmailAndPassword(
   }
 }
 
+export async function loginWithGoogle(): Promise<UserCredential> {
+  // A fresh provider per attempt keeps the account chooser from being skipped
+  // after a failed or cancelled popup.
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+
+  try {
+    return await signInWithPopup(firebaseAuth, provider);
+  } catch (error) {
+    logFirebaseError("Google sign-in", error);
+    throw mapFirebaseError(
+      error,
+      "Unable to sign in with Google. Please try again.",
+    );
+  }
+}
+
+export function createRecaptchaVerifier(
+  container: HTMLElement | string,
+): RecaptchaVerifier {
+  return new RecaptchaVerifier(firebaseAuth, container, { size: "invisible" });
+}
+
+export async function requestPhoneVerificationCode(
+  phoneNumber: string,
+  verifier: RecaptchaVerifier,
+): Promise<ConfirmationResult> {
+  try {
+    return await signInWithPhoneNumber(
+      firebaseAuth,
+      phoneNumber.trim(),
+      verifier,
+    );
+  } catch (error) {
+    logFirebaseError("Phone verification code request", error);
+    throw mapFirebaseError(
+      error,
+      "Unable to send the verification code. Please try again.",
+    );
+  }
+}
+
+export async function confirmPhoneVerificationCode(
+  confirmation: ConfirmationResult,
+  code: string,
+): Promise<UserCredential> {
+  try {
+    return await confirmation.confirm(code.trim());
+  } catch (error) {
+    logFirebaseError("Phone verification code confirmation", error);
+    throw mapFirebaseError(
+      error,
+      "Unable to verify that code. Please try again.",
+    );
+  }
+}
+
 export async function logoutAdmin(): Promise<void> {
   try {
     await signOut(firebaseAuth);
@@ -117,4 +179,3 @@ export async function getAdminAccess(uid: string): Promise<AdminAccessResult> {
 
   return { status: "authorized", adminUser };
 }
-

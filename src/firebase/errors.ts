@@ -21,7 +21,32 @@ const FIREBASE_ERROR_MESSAGES: Readonly<Record<string, string>> = Object.freeze(
   "auth/network-request-failed":
     "Unable to reach the authentication service. Check your connection and try again.",
   "auth/operation-not-allowed":
-    "Email and password sign-in is not available right now.",
+    "That sign-in method is not enabled for this project.",
+  "auth/popup-closed-by-user":
+    "The Google sign-in window was closed before sign-in finished.",
+  "auth/cancelled-popup-request":
+    "Another sign-in window is already open. Finish or close it first.",
+  "auth/popup-blocked":
+    "Your browser blocked the Google sign-in window. Allow pop-ups and try again.",
+  "auth/account-exists-with-different-credential":
+    "An account already exists with this email using a different sign-in method.",
+  "auth/unauthorized-domain":
+    "This domain is not authorized for sign-in. Contact a super administrator for help.",
+  "auth/invalid-phone-number":
+    "Enter a valid phone number in international format, such as +919876543210.",
+  "auth/missing-phone-number": "Enter your phone number.",
+  "auth/quota-exceeded":
+    "The SMS limit for this project has been reached. Please try again later.",
+  "auth/captcha-check-failed":
+    "The reCAPTCHA check failed. Reload the page and try again.",
+  "auth/invalid-verification-code":
+    "That verification code is incorrect. Check the code and try again.",
+  "auth/missing-verification-code":
+    "Enter the verification code sent to your phone.",
+  "auth/code-expired":
+    "That verification code has expired. Request a new code and try again.",
+  "auth/phone-challenge-missing":
+    "Request a new verification code and try again.",
   "auth/admin-not-found":
     "This account is not authorized to access the admin area.",
   "auth/admin-inactive":
@@ -46,6 +71,10 @@ const FIREBASE_ERROR_MESSAGES: Readonly<Record<string, string>> = Object.freeze(
     "The service is receiving too many requests. Please try again later.",
   "firestore/resource-exhausted":
     "The service is receiving too many requests. Please try again later.",
+  "failed-precondition":
+    "This list is not ready yet because a required database index is missing. Contact a developer.",
+  "firestore/failed-precondition":
+    "This list is not ready yet because a required database index is missing. Contact a developer.",
   "not-found": "The requested item could not be found.",
   "firestore/not-found": "The requested item could not be found.",
   "already-exists": "An item with these details already exists.",
@@ -116,5 +145,19 @@ export function logFirebaseError(context: string, error: unknown): void {
 
   const code = readErrorCode(error) ?? "firebase/unknown";
   console.error(`[Firebase] ${context} failed (${code}).`);
+
+  // A missing composite index reports FAILED_PRECONDITION, and Firestore puts
+  // a one-click index-creation link in the raw message. Logging only the code
+  // hides that link, so surface it here. Development only, as above.
+  if (
+    code.endsWith("failed-precondition") &&
+    error instanceof Error &&
+    error.message
+  ) {
+    console.error(`[Firebase] ${error.message}`);
+    console.error(
+      "[Firebase] Run `node scripts/check-firestore-indexes.mjs` to list every missing index.",
+    );
+  }
 }
 

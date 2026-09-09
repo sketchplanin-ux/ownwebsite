@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+# the media Worker in worker/ has its own package.json
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*

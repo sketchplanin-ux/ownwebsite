@@ -197,7 +197,11 @@ function uploadImage(
       !CLOUDINARY_CLOUD_NAME_PATTERN.test(cloudinaryCloudName) ||
       !CLOUDINARY_UPLOAD_PRESET_PATTERN.test(cloudinaryUploadPreset)
     ) {
-      reject(new Error("Cloudinary is not configured correctly."))
+      reject(
+        new Error(
+          "Image uploads are unavailable because Cloudinary is not configured. Set NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET in .env."
+        )
+      )
       return
     }
 
