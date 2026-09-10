@@ -199,7 +199,7 @@ function uploadImage(
     ) {
       reject(
         new Error(
-          "Image uploads are unavailable because Cloudinary is not configured. Set NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET in .env."
+          "Image uploads are unavailable because Cloudinary is not configured. Set CLOUDINARY_UPLOAD_PRESET in .env."
         )
       )
       return

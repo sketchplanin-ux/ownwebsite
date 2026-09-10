@@ -85,20 +85,26 @@ Open `http://localhost:3000/` for the public site and `http://localhost:3000/adm
 Populate `.env`; never commit it. `.gitignore` covers every `.env*` file except `.env.example`.
 
 ```env
-NEXT_PUBLIC_FIREBASE_API_KEY=
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
-NEXT_PUBLIC_FIREBASE_APP_ID=
-NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
+FIREBASE_API_KEY=
+FIREBASE_AUTH_DOMAIN=
+FIREBASE_PROJECT_ID=
+FIREBASE_STORAGE_BUCKET=
+FIREBASE_MESSAGING_SENDER_ID=
+FIREBASE_APP_ID=
+FIREBASE_MEASUREMENT_ID=
 
-NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=
-NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_UPLOAD_PRESET=
 
-NEXT_PUBLIC_SITE_URL=
-NEXT_PUBLIC_WHATSAPP_NUMBER=
+SITE_URL=
+WHATSAPP_NUMBER=
 ```
+
+These names are deliberately plain — this project does **not** use the `NEXT_PUBLIC_`
+prefix. `next.config.ts` declares the same keys in its `env` map, which is what makes
+Next.js inline each `process.env.<KEY>` value into the static export at build time.
+Adding a variable therefore means two edits: `.env` (plus `.env.example`) and the
+`publicRuntimeKeys` list in `next.config.ts`.
 
 Firebase web configuration is public by design. Authorization is enforced by Firebase Authentication and `firestore.rules`. The Cloudinary cloud name and unsigned preset name are also public client values, so the preset itself must be tightly restricted.
 
@@ -107,7 +113,7 @@ Never add any of the following to this project:
 - Firebase service-account JSON or private key
 - Cloudinary API secret
 - SMTP credentials
-- private server credentials in a `NEXT_PUBLIC_*` variable
+- any private server credential — every variable listed above is inlined into the browser bundle by the `env` map in `next.config.ts`
 
 ## Firebase project setup
 
@@ -276,7 +282,7 @@ Rules are not query filters. Public queries in this app therefore include the sa
 
 ## Cloudinary setup
 
-Create a dedicated **unsigned** upload preset in Cloudinary and put its name in `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`.
+Create a dedicated **unsigned** upload preset in Cloudinary and put its name in `CLOUDINARY_UPLOAD_PRESET`.
 
 Recommended preset restrictions:
 
@@ -305,6 +311,41 @@ npm run build
 
 `npm run build` must generate `out/`. The regular unit suite excludes emulator tests; `npm run test:rules` starts the Firestore emulator and runs only the rule suite.
 
+## Vercel deployment
+
+The build is a static export, so every variable below is read at build time and baked
+into the output. Changing one in Vercel requires a redeploy; it does not take effect
+at request time.
+
+In the Vercel project, open **Settings → Environment Variables** and add each key for
+the environments it applies to (Production, Preview, Development):
+
+| Key | Required | Value |
+| --- | --- | --- |
+| `FIREBASE_API_KEY` | yes | Firebase web app `apiKey` |
+| `FIREBASE_AUTH_DOMAIN` | yes | `<project-id>.firebaseapp.com` |
+| `FIREBASE_PROJECT_ID` | yes | Firebase project id |
+| `FIREBASE_STORAGE_BUCKET` | yes | `<project-id>.firebasestorage.app` |
+| `FIREBASE_MESSAGING_SENDER_ID` | yes | Firebase sender id |
+| `FIREBASE_APP_ID` | yes | Firebase web app id |
+| `FIREBASE_MEASUREMENT_ID` | no | Analytics id, e.g. `G-XXXXXXX` |
+| `CLOUDINARY_CLOUD_NAME` | yes | Cloudinary cloud name |
+| `CLOUDINARY_UPLOAD_PRESET` | no | Unsigned preset name; blank disables admin uploads |
+| `SITE_URL` | yes | Full deployed origin, no trailing slash |
+| `WHATSAPP_NUMBER` | no | Contact number in international digits |
+
+Notes:
+
+- Set `SITE_URL` per environment (production domain for Production, the preview or
+  `localhost:3000` origin elsewhere). `robots.txt`, `sitemap.xml`, and canonical tags
+  come from it.
+- Mark none of these as sensitive-only-at-runtime secrets: they ship to the browser by
+  design. Never add the Cloudinary API secret or a Firebase service-account key.
+- Add the Vercel domains to Firebase Authentication → Settings → Authorized domains,
+  or Google popup and phone sign-in will be rejected.
+- `output: "export"` writes to `out/`; leave the Vercel framework preset on Next.js and
+  it will serve that directory.
+
 ## Firebase Hosting deployment
 
 No deployment command should be run until the owner approves the target and release.
@@ -331,7 +372,7 @@ After Hosting is deployed:
 3. Add the exact verification and routing DNS records shown by Firebase.
 4. Wait for DNS and the managed SSL certificate to reach `Connected`.
 5. Add the final domain to Firebase Authentication authorized domains.
-6. Set `NEXT_PUBLIC_SITE_URL`, update `siteSettings/seo.siteUrl`, rebuild, and redeploy.
+6. Set `SITE_URL`, update `siteSettings/seo.siteUrl`, rebuild, and redeploy.
 
 ## Admin usage
 

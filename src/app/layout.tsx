@@ -10,7 +10,7 @@ const siteTitle = "SKETCHPLAN | Architecture, Interior & Planning";
 const siteDescription =
   "Thoughtful architecture, interior design, and spatial planning by SKETCHPLAN, shaped with clarity, purpose, and enduring detail.";
 const siteUrl = new URL(
-  process.env.NEXT_PUBLIC_SITE_URL?.trim() || "http://localhost:3000",
+  process.env.SITE_URL?.trim() || "http://localhost:3000",
 );
 
 export const metadata: Metadata = {

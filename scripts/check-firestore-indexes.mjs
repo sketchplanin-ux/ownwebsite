@@ -39,8 +39,8 @@ async function readEnvironment() {
         }
       }
 
-      const projectId = values.get("NEXT_PUBLIC_FIREBASE_PROJECT_ID");
-      const apiKey = values.get("NEXT_PUBLIC_FIREBASE_API_KEY");
+      const projectId = values.get("FIREBASE_PROJECT_ID");
+      const apiKey = values.get("FIREBASE_API_KEY");
 
       if (projectId && apiKey) {
         return { projectId, apiKey, source: candidate };
@@ -51,7 +51,7 @@ async function readEnvironment() {
   }
 
   throw new Error(
-    "Could not read NEXT_PUBLIC_FIREBASE_PROJECT_ID and NEXT_PUBLIC_FIREBASE_API_KEY from .env",
+    "Could not read FIREBASE_PROJECT_ID and FIREBASE_API_KEY from .env",
   );
 }
 

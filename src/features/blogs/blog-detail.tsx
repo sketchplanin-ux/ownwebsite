@@ -17,7 +17,7 @@ import { isSafeHttpUrl } from "@/lib/url"
 import type { Blog } from "@/types/blog"
 
 function resolvePublicUrl(path: string) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "")
+  const siteUrl = process.env.SITE_URL?.trim().replace(/\/+$/, "")
   return siteUrl ? `${siteUrl}${path}` : path
 }
 
